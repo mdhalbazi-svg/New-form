@@ -22,16 +22,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
+
+      - name: Check Project Files
+        run: |
+          test -f package.json
+          test -f capacitor.config.json
+          echo "Project files verified"
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Verify Capacitor Android
+        run: npm ls @capacitor/core @capacitor/cli @capacitor/android
 
       - name: Build Web Application
         run: npm run build
@@ -39,7 +47,7 @@ jobs:
       - name: Verify Web Build
         run: |
           test -f www/index.html
-          echo "Web build verified"
+          echo "Web application verified"
 
       - name: Add Android Platform
         run: |
@@ -64,7 +72,7 @@ jobs:
       - name: Upload APK and AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Islamic-Daily-Diary-Build
+          name: Islamic-Daily-Diary-Android
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/bundle/release/*.aab
