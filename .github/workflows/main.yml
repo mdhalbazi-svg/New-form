@@ -33,27 +33,31 @@ jobs:
         run: |
           test -f package.json
           test -f capacitor.config.json
+          test -f icon-only.png
+          test -f icon-foreground.png
+          test -f icon-background.png
           echo "Project files verified"
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Verify Capacitor Android
-        run: npm ls @capacitor/core @capacitor/cli @capacitor/android
+      - name: Verify Capacitor
+        run: npm ls @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
 
       - name: Build Web Application
         run: npm run build
 
       - name: Verify Web Build
-        run: |
-          test -f www/index.html
-          echo "Web application verified"
+        run: test -f www/index.html
 
       - name: Add Android Platform
         run: |
           if [ ! -d android ]; then
             npx cap add android
           fi
+
+      - name: Generate Android App Icons
+        run: npx capacitor-assets generate --android --assetPath .
 
       - name: Sync Capacitor
         run: npx cap sync android
