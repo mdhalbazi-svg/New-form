@@ -10,176 +10,376 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: islamic-daily-diary-build
+  cancel-in-progress: false
+
+env:
+  KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+  KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+  KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+  KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
 jobs:
   build:
+    name: Build Android APK and AAB
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Download source code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 2. Install Node.js 22
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
+      # 3. Install Java 21
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
-      - name: Check Project Files
+      # 4. Verify all project files
+      - name: Verify Project Files
         run: |
-          set -e
-          test -f package.json
-          test -f capacitor.config.json
-          test -f icon-only.png
-          test -f icon-foreground.png
-          test -f icon-background.png
-          echo "Project files verified"
+          set -euo pipefail
 
+          for f in \
+            package.json \
+            capacitor.config.json \
+            index.html \
+            app.js \
+            prayer.js \
+            notify.js \
+            ads.js \
+            ads-config.json \
+            data.js \
+            theme.js \
+            icons.js \
+            style.css \
+            build.js \
+            native/MainActivity.java \
+            native/IddNative.java \
+            native/Scheduler.java \
+            native/AlarmReceiver.java \
+            native/BootReceiver.java \
+            tools/apply_native.py \
+            tests/logic.test.js \
+            icon-only.png \
+            icon-foreground.png \
+            icon-background.png
+          do
+            test -f "$f" || {
+              echo "ERROR: Missing project file: $f"
+              exit 1
+            }
+          done
+
+          node -e "
+            const p = require('./package.json');
+            const c = require('./capacitor.config.json');
+
+            if (Number(process.versions.node.split('.')[0]) < 22)
+              throw new Error('Node 22 required');
+
+            if (!c.appId || !c.appId.includes('.'))
+              throw new Error('Invalid Capacitor App ID');
+
+            if (!p.dependencies['@capacitor/core'])
+              throw new Error('Capacitor dependency missing');
+
+            console.log('App ID:', c.appId);
+            console.log('Version:', p.version);
+          "
+
+          python3 -m py_compile tools/apply_native.py
+
+          echo "Project verification passed."
+
+      # 5. Install npm dependencies
       - name: Install Dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
 
-      - name: Verify Capacitor
-        run: npm ls @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
+      # 6. Verify Capacitor and AdMob
+      - name: Verify Dependencies
+        run: |
+          set -euo pipefail
 
+          npm ls \
+            @capacitor/core \
+            @capacitor/cli \
+            @capacitor/android \
+            @capacitor/assets \
+            @capacitor-community/admob
+
+      # 7. JavaScript syntax check
+      - name: JavaScript Syntax Check
+        run: npm run check
+
+      # 8. Run all automated tests
+      - name: Run Logic Tests
+        run: npm test
+
+      # 9. Build web application
       - name: Build Web Application
         run: npm run build
 
+      # 10. Verify web output
       - name: Verify Web Build
-        run: test -f www/index.html
+        run: |
+          set -euo pipefail
+          test -f www/index.html
+          test -f www/app.js
+          test -f www/prayer.js
+          echo "Web build verified."
 
+      # 11. Add Android platform if missing
       - name: Add Android Platform
         run: |
           if [ ! -d android ]; then
             npx cap add android
           fi
 
-      - name: Generate Android App Icons
-        run: npx capacitor-assets generate --android --assetPath .
+      # 12. Generate application icons and splash
+      - name: Generate Android Assets
+        run: |
+          npx capacitor-assets generate \
+            --android \
+            --assetPath .
 
-      - name: Sync Capacitor
+      # 13. Sync Capacitor
+      - name: Sync Android Project
         run: npx cap sync android
 
-      - name: Decode Android Keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      # 14. Apply native Java files and Android permissions
+      - name: Install Native Android Features
         run: |
           set -euo pipefail
 
-          test -n "$ANDROID_KEYSTORE_BASE64"
+          VERSION_CODE=${{ github.run_number }} \
+            python3 tools/apply_native.py
 
-          mkdir -p android/app
+          echo "Native files installed."
 
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" \
-            | tr -d '[:space:]' \
-            | base64 --decode > android/app/release-key.jks
+          grep -n "AlarmReceiver\|BootReceiver" \
+            android/app/src/main/AndroidManifest.xml
 
-          test -s android/app/release-key.jks
-
-          echo "Keystore decoded successfully"
-
-      - name: Verify Android Keystore
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      # 15. Verify AdMob integration
+      - name: Verify AdMob Integration
         run: |
           set -euo pipefail
 
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          npx cap ls android | tee cap-plugins.txt
 
-          keytool -list \
-            -keystore android/app/release-key.jks \
-            -alias myislamicdiary \
-            -storepass "$ANDROID_KEYSTORE_PASSWORD"
+          grep -qi admob cap-plugins.txt || {
+            echo "AdMob plugin not detected."
+            exit 1
+          }
 
-          echo "Keystore and alias verified successfully"
+          grep -q \
+            "com.google.android.gms.ads.APPLICATION_ID" \
+            android/app/src/main/AndroidManifest.xml
 
-      - name: Configure Release Signing
+          grep -q \
+            "admob_app_id" \
+            android/app/src/main/res/values/strings.xml
+
+          node -e "
+            const c = require('./ads-config.json');
+
+            if (!['test', 'production'].includes(c.mode))
+              throw new Error('Invalid AdMob mode');
+
+            console.log('AdMob mode:', c.mode);
+          "
+
+      # 16. Verify Android SDK versions and package ID
+      - name: Verify Android Configuration
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          set -euo pipefail
 
-          p = Path("android/app/build.gradle")
+          V=android/variables.gradle
 
-          if not p.exists():
-              raise SystemExit("android/app/build.gradle not found")
+          test -f "$V"
 
-          s = p.read_text()
+          grep -Eq 'minSdkVersion[[:space:]]*=[[:space:]]*24' "$V"
+          grep -Eq 'compileSdkVersion[[:space:]]*=[[:space:]]*36' "$V"
+          grep -Eq 'targetSdkVersion[[:space:]]*=[[:space:]]*36' "$V"
 
-          signing = """
-              signingConfigs {
-                  release {
-                      storeFile file("release-key.jks")
-                      storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                      keyAlias "myislamicdiary"
-                      keyPassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                  }
-              }
-          """
+          APP_ID=$(node -p \
+            "require('./capacitor.config.json').appId")
 
-          if not re.search(
-              r'signingConfigs\s*\{[\s\S]*?\brelease\s*\{',
-              s
-          ):
-              s, n = re.subn(
-                  r'(\bandroid\s*\{)',
-                  lambda m: m.group(1) + "\n" + signing,
-                  s,
-                  count=1
-              )
+          grep -Fq "$APP_ID" android/app/build.gradle
 
-              if n != 1:
-                  raise SystemExit("Android block not found")
+          echo "Package ID: $APP_ID"
+          echo "Android SDK configuration verified."
 
-          if not re.search(
-              r'signingConfig\s+signingConfigs\.release',
-              s
-          ):
-              s, n = re.subn(
-                  r'(\bbuildTypes\s*\{\s*release\s*\{)',
-                  r'\1\n            signingConfig signingConfigs.release',
-                  s,
-                  count=1
-              )
+      # 17. Check signing secrets
+      - name: Check Signing Secrets
+        run: |
+          set -euo pipefail
 
-              if n != 1:
-                  raise SystemExit("Release build type not found")
+          COUNT=0
 
-          p.write_text(s)
+          for VALUE in \
+            "$KEYSTORE_BASE64" \
+            "$KEYSTORE_PASSWORD" \
+            "$KEY_ALIAS" \
+            "$KEY_PASSWORD"
+          do
+            if [ -n "$VALUE" ]; then
+              COUNT=$((COUNT + 1))
+            fi
+          done
 
-          print("Release signing configured successfully")
-          PY
+          if [ "$COUNT" -ne 0 ] && [ "$COUNT" -ne 4 ]; then
+            echo "ERROR: All four signing secrets are required."
+            exit 1
+          fi
 
+          if [ "$COUNT" -eq 4 ]; then
+            echo "All signing secrets are configured."
+          else
+            echo "::warning::Signing secrets missing. Only debug APK will be produced."
+          fi
+
+      # 18. Build debug APK
       - name: Build Debug APK
         run: |
+          set -euo pipefail
+
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Build Signed Release AAB
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          test -f app/build/outputs/apk/debug/app-debug.apk
+
+      # 19. Decode and verify existing Keystore
+      - name: Decode and Verify Keystore
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
         run: |
+          set -euo pipefail
+
+          mkdir -p "$RUNNER_TEMP/diary-signing"
+
+          printf '%s' "$KEYSTORE_BASE64" \
+            | tr -d '[:space:]' \
+            | base64 --decode \
+            > "$RUNNER_TEMP/diary-signing/release.jks"
+
+          test -s "$RUNNER_TEMP/diary-signing/release.jks"
+
+          keytool -list -v \
+            -keystore "$RUNNER_TEMP/diary-signing/release.jks" \
+            -alias "$KEY_ALIAS" \
+            -storepass:env KEYSTORE_PASSWORD
+
+          echo "Existing Keystore verified."
+
+      # 20. Build release APK and AAB
+      - name: Build Release APK and AAB
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        run: |
+          set -euo pipefail
+
           cd android
-          ./gradlew bundleRelease
 
-      - name: Verify Build Outputs
+          ./gradlew assembleRelease bundleRelease --no-daemon
+
+          test -f app/build/outputs/bundle/release/app-release.aab
+
+          ls -l app/build/outputs/apk/release/
+          ls -l app/build/outputs/bundle/release/
+
+      # 21. Sign and verify release APK and AAB
+      - name: Sign Release APK and AAB
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
         run: |
-          set -e
-          test -f android/app/build/outputs/apk/debug/app-debug.apk
-          test -f android/app/build/outputs/bundle/release/app-release.aab
-          echo "APK and AAB verified successfully"
+          set -euo pipefail
 
-      - name: Upload APK and Signed AAB
+          KS="$RUNNER_TEMP/diary-signing/release.jks"
+
+          BT=$(find "$ANDROID_HOME/build-tools" \
+            -mindepth 1 -maxdepth 1 -type d \
+            | sort -V | tail -1)
+
+          test -n "$BT"
+
+          AAB="android/app/build/outputs/bundle/release/app-release.aab"
+
+          APK=$(find android/app/build/outputs/apk/release \
+            -maxdepth 1 -name '*.apk' \
+            | head -1)
+
+          test -f "$AAB"
+          test -f "$APK"
+
+          # Sign Android App Bundle
+          jarsigner \
+            -keystore "$KS" \
+            -storepass:env KEYSTORE_PASSWORD \
+            -keypass:env KEY_PASSWORD \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -signedjar "$RUNNER_TEMP/app-release-signed.aab" \
+            "$AAB" \
+            "$KEY_ALIAS"
+
+          # Verify AAB signature
+          jarsigner -verify -strict \
+            "$RUNNER_TEMP/app-release-signed.aab"
+
+          cp "$RUNNER_TEMP/app-release-signed.aab" \
+            android/app/build/outputs/bundle/release/app-release.aab
+
+          # Align and sign APK
+          "$BT/zipalign" -f -p 4 \
+            "$APK" \
+            "$RUNNER_TEMP/app-aligned.apk"
+
+          "$BT/apksigner" sign \
+            --ks "$KS" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KEYSTORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD \
+            --out android/app/build/outputs/apk/release/app-release-signed.apk \
+            "$RUNNER_TEMP/app-aligned.apk"
+
+          # Verify APK signature
+          "$BT/apksigner" verify --verbose --print-certs \
+            android/app/build/outputs/apk/release/app-release-signed.apk
+
+          echo "Signed APK and AAB verified."
+
+      # 22. Warn about test advertisements
+      - name: Check AdMob Release Mode
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        run: |
+          node -e "
+            const c = require('./ads-config.json');
+
+            if (c.mode !== 'production') {
+              console.log('::warning::AdMob is in TEST mode. Production ads are not enabled.');
+            } else {
+              console.log('Production AdMob mode selected.');
+            }
+          "
+
+      # 23. Upload build artifacts
+      - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Islamic-Daily-Diary-Android
           path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-signed.apk
+            android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
           
