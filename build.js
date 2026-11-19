@@ -1,5 +1,27 @@
-const fs=require('fs');
-const files=['index.html','app.js'];
-fs.rmSync('www',{recursive:true,force:true});fs.mkdirSync('www',{recursive:true});
-for(const f of files){if(!fs.existsSync(f))throw new Error('Missing '+f);fs.copyFileSync(f,'www/'+f)}
-console.log('Web app built into www');
+
+const fs = require('fs');
+const path = require('path');
+
+const files = [
+  'index.html',
+  'app.js',
+  'data.js',
+  'icons.js',
+  'theme.js',
+  'style.css',
+  'splash.png',
+  'icon-only.png',
+  'icon-background.png',
+  'icon-foreground.png'
+];
+
+fs.rmSync('www', { recursive: true, force: true });
+fs.mkdirSync('www', { recursive: true });
+
+for (const file of files) {
+  if (fs.existsSync(file)) {
+    fs.copyFileSync(file, path.join('www', file));
+  }
+}
+
+console.log('Web application built successfully.');
