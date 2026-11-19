@@ -1,112 +1,904 @@
-(function(){
-const TH=window.APP_THEME,D=window.APP_DATA,K='idd_v2';
-const PR=[['fajr','فجر|Fajr'],['dhuhr','ظہر|Dhuhr'],['asr','عصر|Asr'],['maghrib','مغرب|Maghrib'],['isha','عشاء|Isha']];
-const NF=[['ishraq','اشراق|Ishraq'],['awwabin','اوابین|Awwabin'],['tahajjud','تہجد|Tahajjud'],['chasht','چاشت|Chasht']];
-const UNITS=[['page','صفحات|Pages'],['ruku','رکوع|Ruku'],['para','پارے|Juz'],['ayat','آیات|Verses']];
-const NAVI={home:['home','ہوم|Home'],ibadat:['ibadat','عبادات|Worship'],adhkar:['adhkar','اذکار|Adhkar'],duas:['duas','دعائیں|Duas'],qibla:['qibla','قبلہ|Qibla'],more:['more','مزید|More']};
-const MORE=[['muh','muh','محاسبہ|Muhasabah'],['notes','notes','نوٹس و روزے|Notes & Fasts'],['reports','reports','رپورٹس|Reports'],['theme','theme','ترتیبات|Settings']];
-let S=load(),view='home',cur=ymd(new Date()),editAd=false,duaCat='',stopC=null;
-function load(){let s=null;try{s=JSON.parse(localStorage.getItem(K)||'null');}catch(e){}s=s||{};
- s.lang=s.lang||'ur';s.theme=s.theme||TH.defaultTheme;s.hijri=+s.hijri||0;s.city=s.city||'Lahore';s.goal=s.goal||2;
- s.notes=s.notes||[];s.days=s.days||{};s.cc=s.cc||[];s.adhkar=s.adhkar||D.adhkar.map(a=>Object.assign({},a));return s;}
-function save(){try{localStorage.setItem(K,JSON.stringify(S));}catch(e){}}
-const $=q=>document.querySelector(q);
-const t=s=>{const i=s.indexOf('|');return i<0?s:(S.lang==='ur'?s.slice(0,i):s.slice(i+1));};
-function ymd(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
-function day(d){const x=S.days[d]||(S.days[d]={});['p','n','tl','ad','ck','mu'].forEach(k=>x[k]=x[k]||{});return x;}
-function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-function hijri(d){try{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+S.hijri);return new Intl.DateTimeFormat(S.lang==='ur'?'ur-u-ca-islamic-umalqura':'en-u-ca-islamic-umalqura',{day:'numeric',month:'long',year:'numeric'}).format(x);}catch(e){return '';}}
-function theme(){const h=TH.themes[S.theme]||TH.themes[TH.defaultTheme],r=document.documentElement.style;
- r.setProperty('--p',h.p);r.setProperty('--p2',h.p2);r.setProperty('--a',h.a);r.setProperty('--bg',h.bg);r.setProperty('--card',h.card);r.setProperty('--tx',h.tx);r.setProperty('--mu',h.mu);r.setProperty('--r',TH.radius);document.body.style.fontFamily=TH.fontFamily;
- $('#hd').className=TH.headerPattern?'pat':'';}
-function yn(g,i,f,v){return `<span class="yn" data-g="${g}" data-i="${i}" data-f="${f}"><button data-v="1" class="${v===true?'on y':''}">${t('ہاں|Yes')}</button><button data-v="0" class="${v===false?'on n':''}">${t('نہیں|No')}</button></span>`;}
-function ring(p){return `<svg class="ring" viewBox="0 0 100 100"><circle class="rb" cx="50" cy="50" r="42"/><circle class="rf" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="${264*(1-p/100)}" transform="rotate(-90 50 50)"/><text x="50" y="58" text-anchor="middle">${p}%</text></svg>`;}
-function bar(p){return `<div class="bar"><i style="width:${Math.min(100,p)}%"></i></div>`;}
-function dateBar(){return `<div class="card"><input type="date" id="dp" value="${cur}"></div>`;}
-function farz(d){const x=day(d).p;return PR.filter(p=>x[p[0]]&&x[p[0]].done===true).length;}
-function jam(d){const x=day(d).p;return PR.filter(p=>x[p[0]]&&x[p[0]].done===true&&x[p[0]].jam===true).length;}
-const V={
-home(){const D0=day(cur),f=farz(cur),j=jam(cur),nf=NF.filter(n=>D0.n[n[0]]&&D0.n[n[0]].done).length,tl=D0.tl.done===true;
- const ads=S.adhkar.filter(a=>(D0.ad[a.id]||0)>=a.n).length,optT=NF.length+1+S.adhkar.length,optD=nf+(tl?1:0)+ads,op=Math.round(optD/optT*100);
- const mk=cur.slice(0,7),ks=Object.keys(S.days).filter(k=>k.startsWith(mk)),mo=ks.length?Math.round(ks.reduce((a,k)=>a+farz(k),0)/ks.length/5*100):0;
- return dateBar()+`<div class="card"><h3>${ic('ibadat')}${t('فرض نمازیں|Obligatory prayers')}</h3><div class="hero">${ring(Math.round(f/5*100))}<div style="flex:1"><div class="stats"><div class="stat"><b>${f}/5</b>${t('ادا کیں|Performed')}</div><div class="stat"><b>${j}/5</b>${t('جماعت|Jamaah')}</div></div></div></div></div>
- <div class="card"><h3>${ic('check')}${t('اختیاری اعمال|Optional deeds')} · ${op}%</h3>${bar(op)}<div class="stats" style="margin-top:10px"><div class="stat"><b>${nf}/4</b>${t('نوافل|Nafl')}</div><div class="stat"><b>${tl?(D0.tl.qty||'✓'):'—'}</b>${t('تلاوت|Tilawat')}</div><div class="stat"><b>${ads}/${S.adhkar.length}</b>${t('اذکار|Adhkar')}</div><div class="stat"><b>${mo}%</b>${t('ماہانہ فرض|Month (farz)')}</div></div></div>`;},
-ibadat(){const d=day(cur);let h=dateBar()+`<div class="card"><h3>${ic('ibadat')}${t('فرض نمازیں|Obligatory prayers')}</h3>`;
- PR.forEach(([id,n])=>{const x=d.p[id]||{};h+=`<div class="row"><span class="nm">${t(n)}</span>${yn('p',id,'done',x.done)}</div>`;
-  if(x.done===true)h+=`<div class="row"><span class="sm">${t('جماعت کے ساتھ؟|In congregation?')}</span>${yn('p',id,'jam',x.jam)}</div>`;});
- h+=`</div><div class="card"><h3>${ic('plus')}${t('نوافل|Nafl prayers')}</h3>`;
- NF.forEach(([id,n])=>{h+=`<div class="row"><span class="nm">${t(n)}</span>${yn('n',id,'done',(d.n[id]||{}).done)}</div>`;});
- const tl=d.tl;h+=`</div><div class="card"><h3>${ic('duas')}${t('قرآن کی تلاوت|Quran recitation')}</h3><div class="row"><span class="nm">${t('تلاوت کی؟|Recited?')}</span>${yn('tl','x','done',tl.done)}</div>`;
- if(tl.done===true)h+=`<label>${t('مقدار|Amount')}<input type="number" min="0" data-g="tl" data-i="x" data-f="qty" data-k="1" value="${esc(tl.qty)}"></label><select data-g="tl" data-i="x" data-f="unit" data-k="1">${UNITS.map(u=>`<option value="${u[0]}" ${(tl.unit||'page')===u[0]?'selected':''}>${t(u[1])}</option>`).join('')}</select>`;
- return h+'</div>';},
-adhkar(){const d=day(cur);let h=dateBar()+`<div style="text-align:center"><button class="btn ${editAd?'g':'o'}" id="aed">${ic('edit',18)}${t(editAd?'مکمل|Done':'تبدیل کریں|Edit')}</button></div>`;
- S.adhkar.forEach(a=>{const c=d.ad[a.id]||0;h+=`<div class="card"><div class="sm">${t(a.cat||'')}</div>`;
-  if(editAd)h+=`<label>${t('عربی/متن|Text')}<textarea data-ad="${a.id}" data-f="ar">${esc(a.ar)}</textarea></label><label>${t('ترجمہ|Translation')}<textarea data-ad="${a.id}" data-f="ur">${esc(a.ur)}</textarea></label><label>${t('ہدف|Target')}<input type="number" min="1" data-ad="${a.id}" data-f="n" value="${a.n}"></label><button class="btn o" data-del="${a.id}">${ic('trash',18)}${t('حذف|Delete')}</button>`;
-  else h+=`<div class="ar">${esc(a.ar)}</div><div class="sm" style="text-align:center">${esc(S.lang==='ur'?a.ur:(a.en||a.ur))}</div><div class="sm" style="text-align:center">${esc(a.ref||'')}</div><button class="tap" data-inc="${a.id}">${c}</button><div style="text-align:center" class="sm">${t('ہدف|Target')}: ${a.n}</div>${bar(c/a.n*100)}<div style="text-align:center"><button class="btn o" data-rst="${a.id}">${ic('reset',18)}${t('صفر|Reset')}</button></div>`;
-  h+='</div>';});
- if(editAd)h+=`<div class="card"><h3>${ic('plus')}${t('نیا ذکر|New dhikr')}</h3><textarea id="nar" placeholder="${t('ذکر کا متن|Dhikr text')}"></textarea><input type="number" id="nn" placeholder="${t('ہدف|Target')}" value="33"><button class="btn" id="nadd">${t('شامل کریں|Add')}</button><button class="btn o" id="nrs">${t('ڈیفالٹ بحال|Restore defaults')}</button></div>`;
- return h;},
-duas(){const cs=[...new Set(D.duas.map(x=>x.c))];let h=`<div class="chips"><button class="chip ${duaCat?'':'on'}" data-dc="">${t('سب|All')}</button>${cs.map(c=>`<button class="chip ${duaCat===c?'on':''}" data-dc="${esc(c)}">${t(c)}</button>`).join('')}</div>`;
- D.duas.filter(x=>!duaCat||x.c===duaCat).forEach(x=>{h+=`<div class="card"><div class="sm">${t(x.c)}</div><div class="ar">${esc(x.ar)}</div><div>${esc(S.lang==='ur'?x.ur:x.en)}</div><div class="sm">${esc(x.ref)}</div></div>`;});
- return h+`<p class="sm">${t('حوالہ جات کسی عالم سے تصدیق کروا لیں۔|Please verify references with a scholar.')}</p>`;},
-qibla(){const c=D.cities[S.city]||(S.gps?[S.gps.lat,S.gps.lng,'GPS']:D.cities.Lahore),q=qb(c[0],c[1]);
- return `<div class="card"><h3>${ic('qibla')}${t('سمتِ قبلہ|Qibla direction')}</h3><select id="cty">${Object.keys(D.cities).map(k=>`<option value="${k}" ${S.city===k?'selected':''}>${D.cities[k][2]} / ${k}</option>`).join('')}</select><div style="text-align:center"><button class="btn o" id="gps">${ic('gps',18)}${t('میرا مقام (GPS)|Use my location')}</button></div>
- <svg class="compass" viewBox="0 0 200 200"><circle cx="100" cy="100" r="92" fill="var(--card)" stroke="var(--p)" stroke-width="4"/><circle cx="100" cy="100" r="80" fill="none" stroke="var(--a)" stroke-width="1.5"/><text x="100" y="26" text-anchor="middle" font-size="14" fill="var(--tx)">N</text><g id="needle" style="transform-origin:100px 100px;transform:rotate(${q}deg)"><path d="M100 28L110 100H90z" fill="var(--p)"/><rect x="92" y="14" width="16" height="16" rx="2" fill="var(--a)"/><circle cx="100" cy="100" r="7" fill="var(--p2)"/></g></svg>
- <div style="text-align:center"><b style="font-size:24px">${q.toFixed(1)}°</b><div class="sm">${t('شمال سے گھڑی کی سمت میں|clockwise from true North')}</div><button class="btn" id="cmp">${t('کمپاس چلائیں|Start compass')}</button><div class="sm" id="cst"></div></div><p class="sm">${t('کمپاس کے لیے فون کو سیدھا رکھیں اور 8 کی شکل میں گھمائیں۔ احتیاطاً کسی معتبر کمپاس سے بھی تصدیق کریں۔|Hold the phone flat and move it in a figure 8. Cross-check with a trusted compass.')}</p></div>`;},
-more(){return `<div class="grid">`+MORE.filter(m=>m[0]!=='theme'||TH.allowUserThemePicker).map(m=>`<button class="tile" data-go="${m[0]}">${ic(m[1],32)}<div>${t(m[2])}</div></button>`).join('')+'</div>';},
-muh(){const d=day(cur);let h=dateBar()+'<div class="card">';
- D.muhQ.forEach(([ty,q],i)=>{const k='q'+(i+1),x=d.mu[k]||{};
-  if(ty==='y')h+=`<div class="row"><span style="flex:1">${i+1}. ${t(q)}</span>${yn('mu',k,'v',x.v)}</div>`;
-  else h+=`<label>${i+1}. ${t(q)}<input type="${ty==='n'?'number':'text'}" data-g="mu" data-i="${k}" data-f="t" data-k="1" value="${esc(x.t)}"></label>`;});
- h+='</div><div class="card">'+[['ach','آج کی کامیابیاں|Achievements'],['sho','کوتاہیاں|Shortcomings'],['mis','غلطیاں|Mistakes'],['rep','توبہ|Repentance'],['gra','شکر|Gratitude'],['les','سیکھے اسباق|Lessons'],['tom','کل کے اہداف|Tomorrow goals']].map(([k,l])=>`<label>${t(l)}<textarea data-g="mu" data-i="${k}" data-f="t" data-k="1">${esc((d.mu[k]||{}).t)}</textarea></label>`).join('')+'</div>';
- h+=`<div class="card"><h3>${ic('check')}${t('نیک اعمال|Good deeds')}</h3>`+[...D.checks,...S.cc].map((c,i)=>`<div class="row"><span style="flex:1">${t(c)}</span>${yn('ck','c'+i,'v',(d.ck['c'+i]||{}).v)}</div>`).join('')+`<input type="text" id="cc" placeholder="${t('اپنا عمل|Custom deed')}"><button class="btn" id="ccadd">${t('شامل کریں|Add')}</button></div>`;return h;},
-notes(){const d=day(cur);return dateBar()+`<div class="card"><h3>${ic('notes')}${t('نوٹ|Note')}</h3><textarea id="nt"></textarea><button class="btn" id="nadd">${t('شامل کریں|Add')}</button><input type="text" id="ns" placeholder="${t('تلاش|Search')}"><div id="nl"></div></div><div class="card"><h3>${t('روزہ|Fasting')}</h3><select data-g="fast" data-i="x" data-f="t" data-k="1"><option></option>${[['Ramadan','رمضان|Ramadan'],['Mon','پیر|Monday'],['Thu','جمعرات|Thursday'],['Beed','ایام بیض|Ayyam-e-Beed'],['Shawwal','شوال|Shawwal'],['Nafl','نفلی|Nafl'],['Qaza','قضا|Qaza']].map(o=>`<option value="${o[0]}" ${(d.fast&&d.fast.t)===o[0]?'selected':''}>${t(o[1])}</option>`).join('')}</select></div>`;},
-reports(){return `<div class="card"><button class="btn" data-rep="week">${t('ہفتہ|Week')}</button><button class="btn" data-rep="month">${t('مہینہ|Month')}</button><button class="btn" data-rep="year">${t('سال|Year')}</button><div id="rp"></div></div><div class="card"><button class="btn" id="bcsv">CSV</button><button class="btn" id="bjson">${t('بیک اپ|Backup')}</button><label class="btn g" style="margin:3px">${t('بحالی|Restore')}<input type="file" id="rf" accept=".json" hidden></label><button class="btn o" onclick="window.print()">PDF</button></div>`;},
-theme(){return `<div class="card"><h3>${ic('theme')}${t('رنگ/تھیم|Theme')}</h3>`+Object.keys(TH.themes).map(k=>`<button class="sw ${S.theme===k?'on':''}" data-th="${k}" style="background:${TH.themes[k].p}" aria-label="${k}"></button>`).join('')+`</div><div class="card"><label>${t('ہجری تاریخ ایڈجسٹ (دن)|Hijri adjustment (days)')}<input type="number" id="hadj" value="${S.hijri}"></label><label>${t('روزانہ تلاوت کا ہدف|Daily Quran goal')}<input type="number" id="goal" value="${S.goal}"></label></div>`;}
-};
-function qb(la,lo){const r=Math.PI/180,kl=21.4225*r,kg=39.8262*r,p=la*r,dl=kg-lo*r;return (Math.atan2(Math.sin(dl)*Math.cos(kl),Math.cos(p)*Math.sin(kl)-Math.sin(p)*Math.cos(kl)*Math.cos(dl))/r+360)%360;}
-function range(kind){const d=new Date(cur+'T12:00:00');let a,b;if(kind==='week'){const s=new Date(d);s.setDate(d.getDate()-d.getDay());const e=new Date(s);e.setDate(s.getDate()+6);a=ymd(s);b=ymd(e);}else if(kind==='month'){a=cur.slice(0,7)+'-01';b=cur.slice(0,7)+'-31';}else{a=cur.slice(0,4)+'-01-01';b=cur.slice(0,4)+'-12-31';}return [a,b];}
-function report(kind){const [a,b]=range(kind);const ks=Object.keys(S.days).filter(k=>k>=a&&k<=b).sort();let f=0,j=0,nf=0,td=0,ad=0,mu=0;const q={};
- ks.forEach(k=>{const x=day(k);f+=farz(k);j+=jam(k);nf+=NF.filter(n=>x.n[n[0]]&&x.n[n[0]].done).length;if(x.tl.done===true){td++;const u=x.tl.unit||'page';q[u]=(q[u]||0)+(+x.tl.qty||0);}Object.values(x.ad).forEach(v=>ad+=v);if(Object.keys(x.mu).length)mu++;});
- const row=(l,v)=>`<tr><td>${t(l)}</td><td>${v}</td></tr>`;let chart='';
- if(kind==='week'){const s=new Date(a+'T12:00:00');let bars='';for(let i=0;i<7;i++){const e=new Date(s);e.setDate(s.getDate()+i);const v=S.days[ymd(e)]?farz(ymd(e)):0;bars+=`<rect x="${10+i*40}" y="${80-v*14}" width="26" height="${v*14}" rx="5" fill="var(--p)"/><text x="${23+i*40}" y="95" text-anchor="middle" font-size="10" fill="var(--mu)">${e.getDate()}</text>`;}chart=`<svg viewBox="0 0 290 100" width="100%">${bars}</svg>`;}
- return `<h3>${a} → ${b}</h3>${chart}<table>${row('فرض نمازیں ادا|Prayers performed',f)}${row('جماعت سے|In congregation',j)}${row('نفل|Nafl',nf)}${row('تلاوت کے دن|Tilawat days',td)}${row('تلاوت کی مقدار|Tilawat amount',UNITS.map(u=>q[u[0]]?q[u[0]]+' '+t(u[1]):'').filter(Boolean).join(' · ')||0)}${row('اذکار کی گنتی|Dhikr count',ad)}${row('محاسبہ کے دن|Muhasabah days',mu)}</table>`;}
-function dl(n,x,ty){const u=URL.createObjectURL(new Blob([x],{type:ty})),a=document.createElement('a');a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),3000);}
-function setv(g,i,f,v){const d=day(cur),o=d[g]&&typeof d[g]==='object'?d[g]:(d[g]={});const x=o[i]||(o[i]={});x[f]=v;save();}
-function renderNotes(){const q=($('#ns')||{}).value||'';$('#nl').innerHTML=S.notes.filter(n=>n.date===cur&&(!q||n.text.includes(q))).map(n=>`<div class="row"><span>${esc(n.text)}</span><button class="btn o" data-nd="${n.id}">${ic('trash',16)}</button></div>`).join('');}
-function bind(){const a=$('#app'),dp=$('#dp');if(dp)dp.onchange=()=>{cur=dp.value||cur;render();};
- a.querySelectorAll('.yn').forEach(e=>e.onclick=ev=>{const b=ev.target.closest('button');if(!b)return;const v=b.dataset.v==='1';setv(e.dataset.g,e.dataset.i,e.dataset.f,v);if(e.dataset.f==='done'&&!v&&e.dataset.g==='p')setv('p',e.dataset.i,'jam',false);const y=scrollY;render();scrollTo(0,y);});
- a.querySelectorAll('[data-k]').forEach(e=>e.onchange=()=>{if(e.dataset.g==='fast'){const d=day(cur);d.fast={t:e.value};save();return;}setv(e.dataset.g,e.dataset.i,e.dataset.f,e.value);});
- a.querySelectorAll('[data-inc]').forEach(e=>e.onclick=()=>{const d=day(cur);d.ad[e.dataset.inc]=(d.ad[e.dataset.inc]||0)+1;save();try{navigator.vibrate&&navigator.vibrate(12);}catch(_){}e.textContent=d.ad[e.dataset.inc];});
- a.querySelectorAll('[data-rst]').forEach(e=>e.onclick=()=>{day(cur).ad[e.dataset.rst]=0;save();render();});
- a.querySelectorAll('[data-ad]').forEach(e=>e.onchange=()=>{const x=S.adhkar.find(z=>z.id===e.dataset.ad);if(x){x[e.dataset.f]=e.dataset.f==='n'?Math.max(1,+e.value||1):e.value;save();}});
- a.querySelectorAll('[data-del]').forEach(e=>e.onclick=()=>{if(confirm(t('حذف کریں؟|Delete?'))){S.adhkar=S.adhkar.filter(z=>z.id!==e.dataset.del);save();render();}});
- const ae=$('#aed');if(ae)ae.onclick=()=>{editAd=!editAd;render();};
- const na=$('#nadd');if(na&&$('#nar'))na.onclick=()=>{const v=$('#nar').value.trim();if(v){S.adhkar.push({id:'u'+Date.now(),cat:'میرے اذکار|My dhikr',ar:v,ur:'',en:'',ref:'',n:+$('#nn').value||33});save();render();}};
- const nr=$('#nrs');if(nr)nr.onclick=()=>{if(confirm(t('ڈیفالٹ اذکار بحال کریں؟ آپ کی تبدیلیاں مٹ جائیں گی۔|Restore defaults? Your edits will be lost.'))){S.adhkar=D.adhkar.map(x=>Object.assign({},x));save();render();}};
- a.querySelectorAll('[data-dc]').forEach(e=>e.onclick=()=>{duaCat=e.dataset.dc;render();});
- a.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>{view=e.dataset.go;render();});
- a.querySelectorAll('[data-th]').forEach(e=>e.onclick=()=>{S.theme=e.dataset.th;save();render();});
- const hj=$('#hadj');if(hj)hj.onchange=()=>{S.hijri=+hj.value||0;save();render();};const gl=$('#goal');if(gl)gl.onchange=()=>{S.goal=+gl.value||1;save();};
- const ct=$('#cty');if(ct)ct.onchange=()=>{S.city=ct.value;save();render();};
- const gp=$('#gps');if(gp)gp.onclick=()=>{if(!navigator.geolocation){alert('GPS N/A');return;}navigator.geolocation.getCurrentPosition(p=>{S.gps={lat:p.coords.latitude,lng:p.coords.longitude};S.city='GPS';save();render();},()=>alert(t('مقام نہیں ملا؛ شہر خود چنیں۔|Location unavailable; choose a city.')),{timeout:15000});};
- const cm=$('#cmp');if(cm)cm.onclick=startC;
- const cc=$('#ccadd');if(cc)cc.onclick=()=>{const v=$('#cc').value.trim();if(v){S.cc.push(v+'|'+v);save();render();}};
- if($('#nl')&&$('#nt')){renderNotes();$('#ns').oninput=renderNotes;$('#nadd').onclick=()=>{const v=$('#nt').value.trim();if(v){S.notes.push({id:Date.now(),date:cur,text:v});save();render();}};$('#nl').onclick=e=>{const b=e.target.closest('[data-nd]');if(b&&confirm(t('حذف کریں؟|Delete?'))){S.notes=S.notes.filter(n=>n.id!=b.dataset.nd);save();renderNotes();}};}
- a.querySelectorAll('[data-rep]').forEach(e=>e.onclick=()=>{$('#rp').innerHTML=report(e.dataset.rep);});
- const bc=$('#bcsv');if(bc){bc.onclick=()=>{const r=['date,prayer,performed,jamaah'];Object.keys(S.days).sort().forEach(k=>PR.forEach(p=>{const x=day(k).p[p[0]];if(x&&x.done!==undefined)r.push([k,p[0],+(x.done===true),+(x.jam===true)].join(','));}));dl('diary.csv','\ufeff'+r.join('\n'),'text/csv');};
-  $('#bjson').onclick=()=>dl('diary-backup.json',JSON.stringify(S),'application/json');
-  $('#rf').onchange=e=>{const f=e.target.files[0];if(f)f.text().then(x=>{try{const o=JSON.parse(x);if(!o.days)throw 0;if(confirm(t('موجودہ ڈیٹا بدل دیں؟|Replace current data?'))){S=o;save();S=load();render();}}catch(_){alert('Invalid');}});};}}
-function startC(){const st=$('#cst'),n=$('#needle');if(!n)return;const c=D.cities[S.city]||(S.gps?[S.gps.lat,S.gps.lng]:D.cities.Lahore),q=qb(c[0],c[1]);let got=false;
- const h=e=>{let hd=null;if(e.webkitCompassHeading!=null)hd=e.webkitCompassHeading;else if(e.alpha!=null&&(e.absolute||e.type==='deviceorientationabsolute'))hd=(360-e.alpha)%360;if(hd==null)return;got=true;n.style.transform='rotate('+(q-hd)+'deg)';st.textContent='';};
- const go=()=>{window.addEventListener('deviceorientationabsolute',h,true);window.addEventListener('deviceorientation',h,true);st.textContent=t('اگر سوئی نہ ہلے تو فون کمپاس سپورٹ نہیں کرتا؛ اوپر دیے گئے زاویے سے سمت لیں۔|If the needle does not move, use the angle above.');};
- stopC=()=>{window.removeEventListener('deviceorientationabsolute',h,true);window.removeEventListener('deviceorientation',h,true);};
- if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')go();}).catch(()=>{});else go();}
-function render(){if(stopC){stopC();stopC=null;}document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==='ur'?'rtl':'ltr';theme();
- $('#title').textContent=S.lang==='ur'?TH.nameUr:TH.nameEn;$('#lang').textContent=S.lang==='ur'?'EN':'اردو';$('#date').textContent=new Date(cur+'T12:00:00').toDateString()+' · '+hijri(cur);
- const sub=['muh','notes','reports','theme'].includes(view);
- $('#nav').innerHTML=TH.tabs.map(k=>`<button data-v="${k}" class="${(k===view||(k==='more'&&sub))?'on':''}">${ic(NAVI[k][0],23)}<span>${t(NAVI[k][1])}</span></button>`).join('');
- $('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{view=b.dataset.v;render();scrollTo(0,0);});
- $('#app').innerHTML=(sub?`<button class="btn o" data-go="more">‹ ${t('واپس|Back')}</button>`:'')+V[view]();bind();}
-$('#lang').onclick=()=>{S.lang=S.lang==='ur'?'en':'ur';save();render();};
-render();})();
+
+/* My Islamic Daily Diary — Professional UI
+   Single-file app.js
+   Requires: <div id="app"></div> in index.html
+*/
+(() => {
+  'use strict';
+
+  const STORE = 'idd_professional_v1';
+
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  const dateLabel = (value = today()) =>
+    new Date(value + 'T12:00:00').toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+
+  const defaults = () => ({
+    version: 1,
+    date: today(),
+    dark: false,
+    city: 'Set your city',
+    prayerTimes: {
+      Fajr: '--:--',
+      Dhuhr: '--:--',
+      Asr: '--:--',
+      Maghrib: '--:--',
+      Isha: '--:--'
+    },
+    days: {},
+    adhkarCount: 0,
+    adhkarTarget: 100,
+    quranPages: 0,
+    quranTarget: 2,
+    notes: [],
+    customActs: [],
+    fasting: {},
+    hijriAdjustment: 0
+  });
+
+  function load() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
+
+      if (!raw || typeof raw !== 'object') {
+        return defaults();
+      }
+
+      const d = defaults();
+
+      return {
+        ...d,
+        ...raw,
+        prayerTimes: {
+          ...d.prayerTimes,
+          ...(raw.prayerTimes || {})
+        },
+        days: raw.days && typeof raw.days === 'object'
+          ? raw.days : {},
+        notes: Array.isArray(raw.notes)
+          ? raw.notes : [],
+        customActs: Array.isArray(raw.customActs)
+          ? raw.customActs : []
+      };
+    } catch (_) {
+      return defaults();
+    }
+  }
+
+  let state = load();
+  let page = 'home';
+  let expandedPrayerTimes = false;
+
+  const root = document.getElementById('app') || (() => {
+    const el = document.createElement('div');
+    el.id = 'app';
+    document.body.appendChild(el);
+    return el;
+  })();
+
+  const css = `
+  :root {
+    --bg: #f5f1e7;
+    --card: #fffefa;
+    --ink: #172033;
+    --muted: #687080;
+    --gold: #c5a33c;
+    --gold2: #eadca9;
+    --line: #e8e1d2;
+    --soft: #f7f0d9;
+    --shadow: 0 8px 28px rgba(54,43,15,.07);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    color: var(--ink);
+  }
+
+  body.idd-dark {
+    --bg: #151a20;
+    --card: #202832;
+    --ink: #f4f1e8;
+    --muted: #b2bac5;
+    --gold: #d7b64e;
+    --gold2: #594c2a;
+    --line: #39424d;
+    --soft: #302b20;
+    --shadow: 0 8px 28px rgba(0,0,0,.18);
+  }
+
+  button, input, textarea, select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  .idd-wrap {
+    max-width: 760px;
+    margin: auto;
+    min-height: 100vh;
+    padding: 14px 15px 104px;
+  }
+
+  .idd-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #e9e5dc;
+    padding: 13px 15px;
+    border-radius: 0 0 16px 16px;
+    margin: -14px -15px 17px;
+  }
+
+  body.idd-dark .idd-head {
+    background: #29313a;
+  }
+
+  .idd-brand {
+    flex: 1;
+    text-align: center;
+  }
+
+  .idd-brand strong {
+    display: block;
+    color: var(--gold);
+    font-size: 23px;
+    letter-spacing: .3px;
+    text-shadow: 0 2px 2px #a58a3a55;
+  }
+
+  .idd-brand small {
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 1.4px;
+  }
+
+  .idd-iconbtn {
+    border: 0;
+    background: var(--card);
+    color: var(--gold);
+    border-radius: 15px;
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+    box-shadow: var(--shadow);
+  }
+
+  .idd-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 27px;
+    padding: 20px;
+    margin: 15px 0;
+    box-shadow: var(--shadow);
+  }
+
+  .idd-prayer-top,
+  .idd-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .idd-kicker {
+    color: #947a28;
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 14px;
+  }
+
+  .idd-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--gold2);
+    background: var(--soft);
+    color: #a4872c;
+    border-radius: 99px;
+    padding: 9px 13px;
+    font-weight: 750;
+  }
+
+  .idd-date {
+    margin: 15px 0;
+    color: #947a28;
+    font-weight: 700;
+  }
+
+  .idd-next {
+    font-size: clamp(27px,7vw,40px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin: 13px 0;
+  }
+
+  .idd-time {
+    font-size: clamp(25px,6vw,36px);
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .idd-rule {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin: 20px 0;
+  }
+
+  .idd-linkbtn {
+    border: 0;
+    background: none;
+    color: var(--gold);
+    font-weight: 800;
+    padding: 8px;
+  }
+
+  .idd-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 25px 0 12px;
+  }
+
+  .idd-section-head h2 {
+    font-size: 21px;
+    margin: 0;
+  }
+
+  .idd-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 10px;
+  }
+
+  .idd-feature {
+    min-width: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 23px;
+    padding: 15px 7px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    color: var(--ink);
+    font-weight: 750;
+  }
+
+  .idd-feature span {
+    display: block;
+    font-size: 31px;
+    margin-bottom: 8px;
+  }
+
+  .idd-feature small {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .idd-xp {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .idd-xp-icon {
+    background: linear-gradient(135deg,#f3d76b,#b58e16);
+    color: #332600;
+    border-radius: 13px;
+    padding: 12px;
+    font-size: 20px;
+  }
+
+  .idd-level {
+    border: 1px solid var(--gold2);
+    background: var(--soft);
+    color: #9b7e24;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-weight: 750;
+  }
+
+  .idd-progress {
+    height: 10px;
+    border-radius: 20px;
+    background: var(--soft);
+    overflow: hidden;
+    margin: 12px 0;
+  }
+
+  .idd-progress i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg,#b99627,#ead37b);
+    border-radius: 20px;
+  }
+
+  .idd-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .idd-stat-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    background: var(--soft);
+    border-radius: 15px;
+    font-size: 23px;
+  }
+
+  .idd-stat b {
+    display: block;
+  }
+
+  .idd-stat small {
+    color: var(--muted);
+  }
+
+  .idd-check {
+    accent-color: #b6952c;
+    width: 21px;
+    height: 21px;
+  }
+
+  .idd-bottom {
+    position: fixed;
+    z-index: 5;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: center;
+    padding: 8px max(8px,env(safe-area-inset-right))
+      calc(8px + env(safe-area-inset-bottom));
+    box-shadow: 0 -5px 22px #0000000c;
+  }
+
+  .idd-nav {
+    width: min(760px,100%);
+    display: grid;
+    grid-template-columns: repeat(5,1fr);
+    gap: 3px;
+  }
+
+  .idd-nav button {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    padding: 7px 2px;
+    border-radius: 17px;
+    font-size: 11px;
+    font-weight: 750;
+  }
+
+  .idd-nav button.active {
+    color: #927721;
+    background: var(--soft);
+  }
+
+  .idd-nav span {
+    display: block;
+    font-size: 22px;
+    margin-bottom: 3px;
+  }
+
+  .idd-title {
+    font-size: 25px;
+    margin: 10px 0 4px;
+  }
+
+  .idd-muted {
+    color: var(--muted);
+  }
+
+  .idd-btn {
+    border: 0;
+    background: linear-gradient(135deg,#d8bb58,#b28e25);
+    color: #fff;
+    border-radius: 13px;
+    padding: 12px 16px;
+    font-weight: 800;
+  }
+
+  .idd-btn.secondary {
+    background: var(--soft);
+    color: #947a28;
+    border: 1px solid var(--gold2);
+  }
+
+  .idd-input {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    padding: 12px;
+    border-radius: 12px;
+    margin: 6px 0 12px;
+  }
+
+  .idd-list {
+    display: grid;
+    gap: 9px;
+  }
+
+  .idd-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: var(--card);
+  }
+
+  .idd-bigcount {
+    text-align: center;
+    font-size: 54px;
+    font-weight: 850;
+    color: var(--gold);
+    padding: 18px;
+  }
+
+  .idd-circle {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    border: 8px solid var(--gold2);
+    background: var(--soft);
+    color: var(--gold);
+    font-size: 25px;
+    font-weight: 850;
+    margin: 10px auto;
+    display: grid;
+    place-items: center;
+  }
+
+  .idd-empty {
+    text-align: center;
+    padding: 25px;
+    color: var(--muted);
+  }
+
+  .idd-footer-note {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 20px;
+  }
+
+  @media(max-width:420px) {
+    .idd-feature-grid {
+      gap: 7px;
+    }
+
+    .idd-feature {
+      padding: 13px 3px;
+    }
+
+    .idd-feature span {
+      font-size: 27px;
+    }
+
+    .idd-feature small {
+      font-size: 10px;
+    }
+
+    .idd-card {
+      padding: 17px;
+    }
+  }
+  `;
+
+  if (!document.getElementById('idd-professional-style')) {
+    const style = document.createElement('style');
+    style.id = 'idd-professional-style';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
+  const day = (date = state.date) => {
+    if (!state.days[date]) {
+      state.days[date] = {
+        prayers: {},
+        quranPages: 0,
+        fast: false,
+        good: []
+      };
+    }
+
+    const d = state.days[date];
+
+    if (!d.prayers) d.prayers = {};
+    if (!Array.isArray(d.good)) d.good = [];
+
+    return d;
+  };
+
+  function save() {
+    localStorage.setItem(STORE, JSON.stringify(state));
+  }
+
+  function setPage(p) {
+    page = p;
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function allDone() {
+    return ['Fajr','Dhuhr','Asr','Maghrib','Isha']
+      .filter(p => day().prayers[p]).length;
+  }
+
+  function progress() {
+    return Math.round(allDone() / 5 * 100);
+  }
+
+  function nav() {
+    return `<nav class="idd-bottom">
+      <div class="idd-nav">
+        ${[
+          ['home','⌂','Home'],
+          ['prayer','🕌','Prayer'],
+          ['quran','📖','Quran'],
+          ['azkar','📿','Azkar'],
+          ['diary','✎','Diary']
+        ].map(([id,ic,label]) => `
+          <button class="${page === id ? 'active' : ''}" data-page="${id}">
+            <span>${ic}</span>${label}
+          </button>
+        `).join('')}
+      </div>
+    </nav>`;
+  }
+
+  function header() {
+    return `<header class="idd-head">
+      <button class="idd-iconbtn" data-action="reminders">♧</button>
+      <div class="idd-brand">
+        <strong>☪ My Islamic Daily Diary</strong>
+        <small>YOUR DAILY SPIRITUAL COMPANION</small>
+      </div>
+      <button class="idd-iconbtn" data-action="menu">☰</button>
+    </header>`;
+  }
+
+  function prayerCard() {
+    return `<section class="idd-card">
+      <div class="idd-prayer-top">
+        <span class="idd-kicker">◉ &nbsp; DAILY PRAYER TRACKER</span>
+        <button class="idd-pill" data-action="city">
+          ⌖ ${esc(state.city)}
+        </button>
+      </div>
+
+      <div class="idd-date">▢ &nbsp; ${esc(dateLabel())}</div>
+
+      <div class="idd-row">
+        <div class="idd-next">Today's Prayers</div>
+        <div class="idd-time">${allDone()}/5</div>
+      </div>
+
+      <div class="idd-pill">
+        ✓ &nbsp; ${allDone()} of 5 prayers completed
+      </div>
+
+      <hr class="idd-rule">
+
+      <div class="idd-row">
+        <span class="idd-muted">Prayer times</span>
+        <button class="idd-linkbtn" data-action="times">
+          Edit prayer times⌄
+        </button>
+      </div>
+
+      ${expandedPrayerTimes ? `
+        <div class="idd-list">
+          ${Object.entries(state.prayerTimes).map(([p,t]) => `
+            <div class="idd-item">
+              <b>${p}</b>
+              <input class="idd-input"
+                style="width:125px;margin:0"
+                type="time"
+                data-time="${p}"
+                value="${esc(t === '--:--' ? '' : t)}">
+            </div>
+          `).join('')}
+        </div>
+        <p class="idd-muted" style="font-size:12px">
+          Enter prayer times from a trusted local timetable.
+          Times are not auto-calculated by this app.
+        </p>
+      ` : ''}
+
+      <button class="idd-linkbtn" data-page="prayer">
+        Open prayer tracker →
+      </button>
+    </section>`;
+  }
+
+  function featureCards() {
+    return `<div class="idd-section-head">
+      <h2>Features</h2>
+      <span class="idd-muted">Your daily tools</span>
+    </div>
+
+    <div class="idd-feature-grid">
+      ${[
+        ['prayer','🕌','Prayer Log'],
+        ['azkar','🤲','Dua & Azkar'],
+        ['azkar','📿','Tasbih'],
+        ['diary','📅','Daily Diary']
+      ].map(([p,ic,l]) => `
+        <button class="idd-feature" data-page="${p}">
+          <span>${ic}</span>
+          <small>${l}</small>
+        </button>
+      `).join('')}
+    </div>`;
+  }
+
+  function dashboard() {
+    const xp =
+      allDone() * 20 +
+      Math.min(100, day().quranPages * 5) +
+      day().good.length * 10;
+
+    return `
+      ${prayerCard()}
+      ${featureCards()}
+
+      <section class="idd-card">
+        <div class="idd-row">
+          <div class="idd-xp">
+            <span class="idd-xp-icon">✦</span>
+            <b>Today's Deen Progress</b>
+          </div>
+          <span class="idd-level">
+            ${xp >= 100 ? 'Achiever' : xp >= 50 ? 'Growing' : 'Beginner'}
+          </span>
+        </div>
+
+        <div class="idd-row" style="margin-top:18px">
+          <b style="color:var(--gold)">${xp} XP</b>
+          <span class="idd-muted">
+            ${Math.max(0,100-xp%100)} XP to next level
+          </span>
+        </div>
+
+        <div class="idd-progress">
+          <i style="width:${xp%100}%"></i>
+        </div>
+
+        <div class="idd-stat">
+          <span class="idd-stat-icon">☑</span>
+          <div style="flex:1">
+            <b>5 Obligatory Prayers</b>
+            <small>${allDone()} / 5 prayed</small>
+          </div>
+          <b>${progress()}%</b>
+        </div>
+
+        <div class="idd-stat">
+          <span class="idd-stat-icon">📖</span>
+          <div style="flex:1">
+            <b>Quran Recitation</b>
+            <small>${day().quranPages} pages today</small>
+          </div>
+          <b>${state.quranTarget} target</b>
+        </div>
+
+        <div class="idd-stat">
+          <span class="idd-stat-icon">🤲</span>
+          <div style="flex:1">
+            <b>Good Deeds</b>
+            <small>${day().good.length} completed</small>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function prayerPage() {
+    const prayers = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
+    const icons = ['🌅','☀️','🌤️','🌇','🌙'];
+
+    return `
+      <h1 class="idd-title">Prayer Log</h1>
+      <p class="idd-muted">Record your five daily obligatory prayers.</p>
+
+      <section class="idd-card">
+        <div class="idd-row">
+          <b>${esc(dateLabel())}</b>
+          <span class="idd-pill">${allDone()} / 5 complete</span>
+        </div>
+
+        ${prayers.map((p,i) => `
+          <div class="idd-stat">
+            <span class="idd-stat-icon">${icons[i]}</span>
+            <div style="flex:1">
+              <b>${p}</b>
+              <small>${day().prayers[p] ? 'Completed' : 'Not marked yet'}</small>
+            </div>
+            <input class="idd-check"
+              type="checkbox"
+              data-prayer="${p}"
+              ${day().prayers[p] ? 'checked' : ''}>
+          </div>
+        `).join('')}
+      </section>`;
+  }
+
+  function quranPage() {
+    return `
+      <h1 class="idd-title">Quran Tracker</h1>
+      <p class="idd-muted">Keep a record of your daily recitation.</p>
+
+      <section class="idd-card">
+        <div class="idd-bigcount">${day().quranPages}</div>
+        <p style="text-align:center" class="idd-muted">
+          Pages recited today
+        </p>
+
+        <div class="idd-row">
+          <button class="idd-btn secondary" data-action="qminus">
+            − One page
+          </button>
+          <button class="idd-btn" data-action="qplus">
+            ＋ One page
+          </button>
+        </div>
+
+        <hr class="idd-rule">
+
+        <label>Daily target (pages)</label>
+        <input class="idd-input"
+          type="number"
+          min="1"
+          max="1000"
+          data-setting="quranTarget"
+          value="${state.quranTarget}">
+
+        <div class="idd-progress">
+          <i style="width:${Math.min(100,day().quranPages/Math.max(1,state.quranTarget)*100)}%"></i>
+        </div>
+      </section>`;
+  }
+
+  function azkarPage() {
+    return `
+      <h1 class="idd-title">Dua, Azkar & Tasbih</h1>
+      <p class="idd-muted">
+        Use the counter for your daily remembrance.
+      </p>
+
+      <section class="idd-card">
+        <div class="idd-row">
+          <b>Personal Tasbih Counter</b>
+          <span class="idd-pill">Target ${state.adhkarTarget}</span>
+        </div>
+
+        <button class="idd-circle" data-action="count">
+          ${state.adhkarCount}
+          <small style="font-size:12px">TAP TO COUNT</small>
+        </button>
+
+        <div class="idd-row">
+          <button class="idd-btn secondary" data-action="resetcount">
+            Reset
+          </button>
+          <button class="idd-btn" data-action="target">
+            Set target
+          </button>
+        </div>
+
+        <div class="idd-progress">
+          <i style="width:${Math.min(100,state.adhkarCount/Math.max(1,state.adhkarTarget)*100)}%"></i>
+        </div>
+      </section>
+
+      <section class="idd-card">
+        <h3>Daily remembrance</h3>
+        <p class="idd-muted">
+          You can use this counter with any dhikr or wird of your choice.
+        </p>
+        <button class="idd-btn secondary" data-action="count">
+          سبحان الله • الحمد لله • الله أكبر
+        </button>
+      </section>`;
+  }
+
+  function diaryPage() {
+    return `
+      <h1 class="idd-title">Daily Diary</h1>
+      <p class="idd-muted">
+        Notes, fasting and personal good deeds.
+      </p>
+
+      <section class="idd-card">
+        <h3>Today's reflection</h3>
+
+        <textarea class="idd-input"
+          rows="4"
+          id="idd-note"
+          placeholder="Write your reflection or note..."></textarea>
+
+        <button class="idd-btn" data-action="addnote">
+          Save note
+        </button>
+
+        <hr class="idd-rule">
+
+        <div class="idd-row">
+          <b>Fasting today</b>
+          <input class="idd-check"
+            type="checkbox"
+            data-fast
+            ${day().fast ? 'checked' : ''}>
+        </div>
+
+        <hr class="idd-rule">
+
+        <h3>Good deeds checklist</h3>
+
+        <div class="idd-list">
+          ${[
+            'Helped someone',
+            'Gave charity',
+            'Maintained family ties',
+            'Read beneficial knowledge',
+            'Avoided harmful speech'
+          ].map((x,i) => `
+            <label class="idd-item">
+              <span>${x}</span>
+              <input class="idd-check"
+                type="checkbox"
+                data-good="${i}"
+                ${day().good.includes(i) ? 'checked' : ''}>
+            </label>
+          `).join('')}
+        </div>
+      </section>
+
+      <section class="idd-card">
+        <h3>Saved notes</h3>
+
+        ${state.notes.length
+          ? state.notes.slice().reverse().map(n => `
+            <div class="idd-item">
+              <div>
+                <b>${esc(n.date)}</b>
+                <div class="idd-muted">${esc(n.text)}</div>
+              </div>
+            </div>
+          `).join('')
+          : '<p class="idd-empty">No notes saved yet.</p>'
+        }
+      </section>
+
+      <section class="idd-card">
+        <h3>Backup & 
