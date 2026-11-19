@@ -26,25 +26,20 @@ jobs:
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
     steps:
-
-      # 1. Checkout
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node 22 (No npm cache required)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # 3. Setup Java 21 (No Gradle cache required)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      # 4. Verify required source files
       - name: Verify Project Files
         run: |
           set -euo pipefail
@@ -99,7 +94,6 @@ jobs:
 
           python3 -m py_compile tools/apply_native.py
 
-      # 5. Verify signing secrets
       - name: Verify Signing Secrets
         run: |
           set -euo pipefail
@@ -118,11 +112,9 @@ jobs:
 
           echo "All signing secrets are available."
 
-      # 6. Install npm dependencies
       - name: Install Dependencies
         run: npm install --no-audit --no-fund
 
-      # 7. Verify installed Capacitor and AdMob
       - name: Verify Dependencies
         run: |
           set -euo pipefail
@@ -134,19 +126,15 @@ jobs:
             @capacitor/assets \
             @capacitor-community/admob
 
-      # 8. JavaScript syntax check
       - name: JavaScript Syntax Check
         run: npm run check
 
-      # 9. Run automated tests
       - name: Run Logic Tests
         run: npm test
 
-      # 10. Build web application
       - name: Build Web Application
         run: npm run build
 
-      # 11. Verify web output
       - name: Verify Web Build
         run: |
           set -euo pipefail
@@ -159,25 +147,21 @@ jobs:
 
           echo "Web build verified."
 
-      # 12. Add Android platform
       - name: Add Android Platform
         run: |
           if [ ! -d android ]; then
             npx cap add android
           fi
 
-      # 13. Generate icons and splash
       - name: Generate Android Assets
         run: |
           npx capacitor-assets generate \
             --android \
             --assetPath .
 
-      # 14. Sync Capacitor BEFORE native modifications
       - name: Sync Android Project
         run: npx cap sync android
 
-      # 15. Verify Android configuration
       - name: Configure Android SDK
         run: |
           set -euo pipefail
@@ -212,7 +196,6 @@ jobs:
           print("Android SDK configuration updated.")
           PY
 
-      # 16. Install native Java features
       - name: Install Native Android Features
         env:
           VERSION_CODE: ${{ github.run_number }}
@@ -227,7 +210,6 @@ jobs:
 
           echo "Native Android files installed."
 
-      # 17. Verify package ID
       - name: Verify Application ID
         run: |
           set -euo pipefail
@@ -239,7 +221,6 @@ jobs:
 
           echo "Application ID: $APP_ID"
 
-      # 18. Verify AdMob configuration
       - name: Verify AdMob Integration
         run: |
           set -euo pipefail
@@ -263,7 +244,6 @@ jobs:
             console.log('AdMob mode:', c.mode);
           "
 
-      # 19. Decode existing Keystore
       - name: Decode Android Keystore
         run: |
           set -euo pipefail
@@ -277,7 +257,6 @@ jobs:
 
           test -s "$RUNNER_TEMP/diary-signing/release.jks"
 
-      # 20. Verify Keystore and Alias
       - name: Verify Keystore
         run: |
           set -euo pipefail
@@ -289,7 +268,6 @@ jobs:
 
           echo "Keystore verified."
 
-      # 21. Build Debug APK
       - name: Build Debug APK
         run: |
           set -euo pipefail
@@ -302,7 +280,6 @@ jobs:
 
           test -f app/build/outputs/apk/debug/app-debug.apk
 
-      # 22. Build Release APK and AAB
       - name: Build Release APK and AAB
         run: |
           set -euo pipefail
@@ -315,7 +292,6 @@ jobs:
 
           test -f app/build/outputs/apk/release/app-release-unsigned.apk
 
-      # 23. Sign and verify AAB and APK
       - name: Sign Release APK and AAB
         run: |
           set -euo pipefail
@@ -335,7 +311,6 @@ jobs:
           test -f "$AAB"
           test -f "$APK"
 
-          # Sign AAB
           jarsigner \
             -keystore "$KS" \
             -storepass:env KEYSTORE_PASSWORD \
@@ -346,18 +321,15 @@ jobs:
             "$AAB" \
             "$KEY_ALIAS"
 
-          # Verify AAB
           jarsigner -verify \
             "$RUNNER_TEMP/app-release-signed.aab"
 
           cp "$RUNNER_TEMP/app-release-signed.aab" "$AAB"
 
-          # Align APK
           "$BT/zipalign" -f -p 4 \
             "$APK" \
             "$RUNNER_TEMP/app-aligned.apk"
 
-          # Sign APK
           "$BT/apksigner" sign \
             --ks "$KS" \
             --ks-key-alias "$KEY_ALIAS" \
@@ -366,7 +338,6 @@ jobs:
             --out android/app/build/outputs/apk/release/app-release-signed.apk \
             "$RUNNER_TEMP/app-aligned.apk"
 
-          # Verify APK
           "$BT/apksigner" verify \
             --verbose \
             --print-certs \
@@ -374,7 +345,6 @@ jobs:
 
           echo "Release APK and AAB signatures verified."
 
-      # 24. Check AdMob release mode
       - name: Check AdMob Release Mode
         run: |
           node -e "
@@ -387,7 +357,6 @@ jobs:
             }
           "
 
-      # 25. Upload Android artifacts
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
         with:
