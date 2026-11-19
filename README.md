@@ -1,21 +1,14 @@
-# میرا دینی روزنامچہ · My Islamic Daily Diary — v2
-Package `com.islamic.daily.dairy` · Capacitor · offline · no registration.
+# My Islamic Daily Diary
 
-## نیا کیا ہے / What changed
-Professional icon & splash, themed UI with SVG icons, prayers = Yes/No (performed, congregation), nafl = Ishraq/Awwabin/Tahajjud/Chasht,
-Quran tilawat Yes/No + amount, editable adhkar counters, Qibla (city list, optional GPS, compass), masnoon duas library, 5 themes.
+Android project based on the uploaded source. Package ID is retained: `com.islamic.daily.dairy`.
 
-## ڈیزائن بدلنا / Changing the design (app creator)
-Edit **`src/theme.js`**: app names, colours (`themes`), default theme, font, corner radius, header pattern, visible bottom tabs.
-For a custom Urdu font, put the font file in `src/` and add an @font-face in `src/style.css`, then name it in `fontFamily`.
-Icons/splash: replace PNGs in `assets/`.
+## Build
+GitHub Actions builds debug/release APK and AAB artifacts. The workflow currently produces **unsigned** release artifacts. To publish on Google Play, sign the AAB with the same upload key used by the existing Play Console app. Do not change the package ID or signing key.
 
-## GitHub
-1. In your repo, **delete the old project files first** (old `src/`, `index.html`), then upload everything here including hidden `.github`.
-2. Actions → "Android Build" → Run workflow. Download artifact `android-builds`.
-- `app-debug-UNSIGNED-FOR-TESTING.apk` testing only. `app-release-unsigned.*` cannot be published.
-- Signed files need secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+## Features in this package
+Daily prayer completion log, manually entered prayer times, Quran page tracker, tasbih counter, fasting and good-deed checklist, notes, JSON backup/import, CSV export, dark mode, Umm al-Qura Hijri date display with manual ±2 day adjustment, and Android local notifications for remaining manually entered prayer times on the current day.
 
-## Notes
-Location permission is only for the optional Qibla GPS button; city selection works without it. Ads (AdMob) are not included.
-Dua/adhkar texts and references are a starter set: have a scholar verify them. Not tested on a real device.
+## Important limitations
+Prayer times are not calculated automatically from GPS/location. Notifications are scheduled for the current day only when the user taps the schedule button. Notification text is `اللّٰهُ أَكْبَر`; this is **not a spoken audio recording** and uses Android notification sound. Automatic daily rescheduling, custom spoken audio, and verified AdMob production integration are not included. Confirm Hijri dates with local moon-sighting announcements.
+
+PDF export is intentionally absent. Data is stored locally in the app's WebView storage; export a JSON backup before reinstalling.

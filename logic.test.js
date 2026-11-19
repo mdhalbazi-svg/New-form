@@ -1,0 +1,1 @@
+const fs=require('fs');const s=fs.readFileSync('app.js','utf8');for(const x of ['function render()','function exportJSON()','function exportCSV()','hijriText()','scheduleAlarms()'])if(!s.includes(x))throw new Error('Missing app feature: '+x);console.log('Project smoke tests passed');

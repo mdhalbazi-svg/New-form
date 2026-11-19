@@ -1,5 +1,6 @@
 {
   "appId": "com.islamic.daily.dairy",
   "appName": "My Islamic Daily Diary",
-  "webDir": "www"
+  "webDir": "www",
+  "bundledWebRuntime": false
 }
