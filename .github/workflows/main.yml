@@ -31,6 +31,7 @@ jobs:
 
       - name: Check Project Files
         run: |
+          set -e
           test -f package.json
           test -f capacitor.config.json
           test -f icon-only.png
@@ -80,6 +81,21 @@ jobs:
 
           echo "Keystore decoded successfully"
 
+      - name: Verify Android Keystore
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+
+          keytool -list \
+            -keystore android/app/release-key.jks \
+            -alias myislamicdiary \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD"
+
+          echo "Keystore and alias verified successfully"
+
       - name: Configure Release Signing
         run: |
           python3 - <<'PY'
@@ -89,7 +105,7 @@ jobs:
           p = Path("android/app/build.gradle")
 
           if not p.exists():
-              raise SystemExit("build.gradle not found")
+              raise SystemExit("android/app/build.gradle not found")
 
           s = p.read_text()
 
@@ -152,6 +168,7 @@ jobs:
 
       - name: Verify Build Outputs
         run: |
+          set -e
           test -f android/app/build/outputs/apk/debug/app-debug.apk
           test -f android/app/build/outputs/bundle/release/app-release.aab
           echo "APK and AAB verified successfully"
@@ -165,5 +182,4 @@ jobs:
             android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
-
           
