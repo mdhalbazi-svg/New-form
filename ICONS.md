@@ -1,2 +1,1 @@
-Launcher icons/splash are generated in CI from assets/ (icon-only, icon-foreground, icon-background, splash, splash-dark)
-via @capacitor/assets. To change the icon, replace those PNGs (1024x1024 icons, 2732x2732 splash) and push.
+Launcher icons/splash are generated in CI from assets/ (icon-only, icon-foreground, icon-background, splash, splash-dark) via @capacitor/assets. To change the icon, replace those PNGs (1024x1024 icons, 2732x2732 splash) and push.
