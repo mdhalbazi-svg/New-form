@@ -1,18 +1,25 @@
+
 {
   "name": "islamic-daily-diary",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "My Islamic Daily Diary - \u0645\u06cc\u0631\u0627 \u062f\u06cc\u0646\u06cc \u0631\u0648\u0632\u0646\u0627\u0645\u0686\u06c1",
+  "description": "My Islamic Daily Diary - میرا دینی روزنامچہ",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "build": "node scripts/build.js",
+    "build": "node build.js",
+    "check": "node --check app.js && node --check prayer.js && node --check notify.js && node --check ads.js && node --check data.js && node --check theme.js && node --check icons.js && node --check build.js",
+    "test": "node tests/logic.test.js",
     "sync": "npm run build && npx cap sync android"
   },
   "dependencies": {
-    "@capacitor/android": "6.1.2",
-    "@capacitor/core": "6.1.2"
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor-community/admob": "8.2.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "6.1.2",
+    "@capacitor/cli": "^8.5.0",
     "@capacitor/assets": "3.0.5"
   }
 }
