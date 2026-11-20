@@ -1,24 +1,10 @@
 {
   "name": "islamic-daily-diary",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
-  "description": "My Islamic Daily Diary - میرا دینی روزنامچہ",
-  "engines": {
-    "node": ">=22"
-  },
-  "scripts": {
-    "build": "node build.js",
-    "check": "node --check app.js && node --check build.js",
-    "test": "node tests/logic.test.js",
-    "sync": "npm run build && npx cap sync android"
-  },
-  "dependencies": {
-    "@capacitor/core": "^8.5.0",
-    "@capacitor/android": "^8.5.0",
-    "@capacitor/local-notifications": "^8.0.0"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^8.5.0",
-    "@capacitor/assets": "^3.0.5"
-  }
+  "description": "My Islamic Daily Diary - offline-first Islamic life companion",
+  "engines": {"node": ">=20"},
+  "scripts": {"build":"node build.js","check":"node --check app.js && node --check build.js","test":"node tests/logic.test.js","sync":"npm run build && npx cap sync android"},
+  "dependencies": {"@capacitor/core":"^8.5.0","@capacitor/android":"^8.5.0","@capacitor/local-notifications":"^8.0.0"},
+  "devDependencies": {"@capacitor/cli":"^8.5.0","@capacitor/assets":"^3.0.5"}
 }

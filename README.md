@@ -1,14 +1,20 @@
 # My Islamic Daily Diary
 
-Android project based on the uploaded source. Package ID is retained: `com.islamic.daily.dairy`.
+Offline-first Islamic daily diary built with HTML, CSS, JavaScript and Capacitor.
+
+## Included
+- Daily prayer tracking, editable prayer times, Quran page tracking, tasbih, fasting, notes, Hijri date display, backup and CSV export.
+- Islamic services page with Quran surah retrieval (AlQuran Cloud), optional per-surah local text caching, Alafasy audio streaming, location-based prayer times and Qibla bearing (AlAdhan API), simple 2.5% zakat estimate, trusted learning links, and WhatsApp contact for Quran learning.
+- WhatsApp contact configured as `+92 306 1856055`.
 
 ## Build
-GitHub Actions builds debug/release APK and AAB artifacts. The workflow currently produces **unsigned** release artifacts. To publish on Google Play, sign the AAB with the same upload key used by the existing Play Console app. Do not change the package ID or signing key.
+- Node.js 22 recommended.
+- `npm install`
+- `npm run check && npm test && npm run build`
+- `npx cap add android` (first Android setup)
+- `npx cap sync android`
 
-## Features in this package
-Daily prayer completion log, manually entered prayer times, Quran page tracker, tasbih counter, fasting and good-deed checklist, notes, JSON backup/import, CSV export, dark mode, Umm al-Qura Hijri date display with manual ±2 day adjustment, and Android local notifications for remaining manually entered prayer times on the current day.
+GitHub Actions builds a debug APK and an unsigned release AAB. A signed Play Store release requires the owner's existing keystore and signing secrets; do not replace an existing Play Store signing key.
 
-## Important limitations
-Prayer times are not calculated automatically from GPS/location. Notifications are scheduled for the current day only when the user taps the schedule button. Notification text is `اللّٰهُ أَكْبَر`; this is **not a spoken audio recording** and uses Android notification sound. Automatic daily rescheduling, custom spoken audio, and verified AdMob production integration are not included. Confirm Hijri dates with local moon-sighting announcements.
-
-PDF export is intentionally absent. Data is stored locally in the app's WebView storage; export a JSON backup before reinstalling.
+## Data and limitations
+Online Quran, prayer-time and Qibla lookups require internet and location permission where applicable. A downloaded surah text is cached locally; the audio player streams and does not yet save MP3 files for offline playback. The language selector saves a preference, but full translation of every legacy screen is not yet complete. The zakat figure is only a basic 2.5% estimate and is not a fatwa or a complete nisab/debt calculation. Inheritance shares require a qualified scholar's review. External links open the respective providers; the app does not reproduce their full libraries.

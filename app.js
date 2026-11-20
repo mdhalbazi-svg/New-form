@@ -556,7 +556,8 @@
           ['prayer','🕌','Prayer'],
           ['quran','📖','Quran'],
           ['azkar','📿','Azkar'],
-          ['diary','✎','Diary']
+          ['diary','✎','Diary'],
+          ['more','☪','More']
         ].map(([id,ic,label]) =>
           `<button type="button"
             class="${page === id ? 'active' : ''}"
@@ -957,6 +958,40 @@
     </section>`;
   }
 
+
+  const EXTRA_STORE='idd_extra_v1';
+  let extra={lang:'ur',surah:1,reader:null,prayer:null,qibla:null};
+  try{extra={...extra,...JSON.parse(localStorage.getItem(EXTRA_STORE)||'{}')}}catch(_){}
+  const saveExtra=()=>localStorage.setItem(EXTRA_STORE,JSON.stringify(extra));
+  const surahNames=['الفاتحة','البقرة','آل عمران','النساء','المائدة','الأنعام','الأعراف','الأنفال','التوبة','يونس','هود','يوسف','الرعد','إبراهيم','الحجر','النحل','الإسراء','الكهف','مريم','طه','الأنبياء','الحج','المؤمنون','النور','الفرقان','الشعراء','النمل','القصص','العنكبوت','الروم','لقمان','السجدة','الأحزاب','سبأ','فاطر','يس','الصافات','ص','الزمر','غافر','فصلت','الشورى','الزخرف','الدخان','الجاثية','الأحقاف','محمد','الفتح','الحجرات','ق','الذاريات','الطور','النجم','القمر','الرحمن','الواقعة','الحديد','المجادلة','الحشر','الممتحنة','الصف','الجمعة','المنافقون','التغابن','الطلاق','التحريم','الملك','القلم','الحاقة','المعارج','نوح','الجن','المزمل','المدثر','القيامة','الإنسان','المرسلات','النبأ','النازعات','عبس','التكوير','الانفطار','المطففين','الانشقاق','البروج','الطارق','الأعلى','الغاشية','الفجر','البلد','الشمس','الليل','الضحى','الشرح','التين','العلق','القدر','البينة','الزلزلة','العاديات','القارعة','التكاثر','العصر','الهمزة','الفيل','قريش','الماعون','الكوثر','الكافرون','النصر','المسد','الإخلاص','الفلق','الناس'];
+  function extraPage(){
+    const cached=Object.keys(localStorage).filter(k=>k.startsWith('idd_surah_')).length;
+    return `<section class="idd-card"><div class="idd-kicker">ISLAMIC LIFE CENTER</div><h2>اسلامی سہولیات / Islamic Services / الخدمات الإسلامية</h2>
+      <label class="idd-field-label">زبان / Language / اللغة</label><select id="extra-lang" class="idd-input"><option value="ur" ${extra.lang==='ur'?'selected':''}>اردو</option><option value="en" ${extra.lang==='en'?'selected':''}>English</option><option value="ar" ${extra.lang==='ar'?'selected':''}>العربية</option></select>
+      <h3>قرآنِ کریم · Quran · القرآن الكريم</h3><p class="idd-muted">114 سورتیں۔ منتخب سورت انٹرنیٹ سے حاصل کرکے فون میں محفوظ کی جاسکتی ہے۔</p>
+      <select id="extra-surah" class="idd-input">${surahNames.map((n,i)=>`<option value="${i+1}" ${extra.surah===i+1?'selected':''}>${i+1}. ${n}</option>`).join('')}</select>
+      <div class="idd-row" style="margin-top:10px;flex-wrap:wrap"><button class="idd-btn" data-action="load-surah">سورت پڑھیں / Read</button><button class="idd-btn secondary" data-action="save-surah">آف لائن محفوظ کریں / Download</button></div>
+      <p class="idd-muted">محفوظ سورتیں: ${cached} · Audio recitation streams from Alafasy; audio requires internet.</p><div id="extra-reader">${extra.reader||'سورت منتخب کرکے پڑھیں۔'}</div>
+      <h3>نماز کے اوقات / Prayer Times</h3><p>اپنی اجازت سے مقام حاصل کرکے آج کے اوقات دیکھیں۔</p><button class="idd-btn" data-action="get-prayers">مقام سے اوقات معلوم کریں</button><div id="extra-prayer">${extra.prayer||''}</div>
+      <h3>قبلہ رخ / Qibla</h3><button class="idd-btn secondary" data-action="get-qibla">قبلہ کی سمت معلوم کریں</button><div id="extra-qibla">${extra.qibla||''}</div>
+      <h3>زکوٰۃ کیلکولیٹر / Zakat Calculator</h3><label class="idd-field-label">قابلِ زکوٰۃ مال (روپے)</label><input class="idd-input" id="zakat-amount" type="number" min="0" placeholder="مثلاً 500000"><button class="idd-btn" data-action="zakat">حساب کریں</button><div id="zakat-result"></div><small class="idd-muted">یہ سادہ 2.5% تخمینہ ہے؛ نصاب، قرض اور قمری سال کی شرائط الگ سے جانچیں۔</small>
+      <h3>قرآن سیکھنے کے لیے قاری صاحب</h3><p>ناظرہ، تجوید اور حفظ کی رہنمائی کے لیے WhatsApp پر رابطہ کریں۔</p><a class="idd-btn" style="display:inline-block;text-decoration:none" href="https://wa.me/923061856055?text=Assalamu%20Alaikum%2C%20I%20want%20to%20learn%20Quran." target="_blank" rel="noopener">WhatsApp پر رابطہ کریں</a>
+      <h3>دینی رہنمائی / Islamic learning</h3><div class="idd-row" style="flex-wrap:wrap"><a class="idd-pill" href="https://www.banuri.edu.pk/" target="_blank" rel="noopener">دارالافتاء بنوری ٹاؤن</a><a class="idd-pill" href="https://sunnah.com/" target="_blank" rel="noopener">حدیث کی کتب</a><a class="idd-pill" href="https://www.islamhouse.com/" target="_blank" rel="noopener">اسلامی کتب</a><a class="idd-pill" href="https://haj.gov.sa/" target="_blank" rel="noopener">حج و عمرہ</a></div>
+      <h3>وراثت / Inheritance</h3><p class="idd-muted">شرعی وراثت میں حصے وارثوں، موانع، قرض اور وصیت کے مطابق بدلتے ہیں۔ اس ایپ میں غیر مصدقہ خودکار فتویٰ یا تقسیم نہیں دی جائے گی۔ مستند مفتی/دارالافتاء سے حساب کی تصدیق ضروری ہے۔</p>
+    </section>`;
+  }
+  async function loadExtraSurah(saveOffline){
+    const n=Number(root.querySelector('#extra-surah')?.value||extra.surah);extra.surah=n;
+    const key='idd_surah_'+n;let data;
+    try{const old=localStorage.getItem(key);if(saveOffline&&old){data=JSON.parse(old)}else{const r=await fetch(`https://api.alquran.cloud/v1/surah/${n}/ur.jalandhry`);if(!r.ok)throw Error('Quran service response '+r.status);const j=await r.json();if(j.code!==200)throw Error('Quran data unavailable');data=j.data;if(saveOffline){try{localStorage.setItem(key,JSON.stringify(data))}catch(_){throw Error('فون کی اسٹوریج کم ہے؛ کچھ جگہ خالی کریں')}}}
+      const verses=data.ayahs||[];extra.reader=`<h4>${esc(data.name||surahNames[n-1])}</h4>${verses.map(a=>`<article style="padding:10px 0;border-bottom:1px solid var(--line)"><div dir="rtl" style="font-size:24px;line-height:1.9">${esc(a.text)}</div><small>${a.numberInSurah||''}</small></article>`).join('')}<audio controls preload="none" style="width:100%" src="https://cdn.islamic.network/quran/audio-surah/128/ar.alafasy/${n}.mp3"></audio>`;
+      saveExtra();const el=root.querySelector('#extra-reader');if(el)el.innerHTML=extra.reader;alert(saveOffline?'سورت فون میں محفوظ ہوگئی۔':'سورت لوڈ ہوگئی۔');
+    }catch(e){alert('قرآن لوڈ نہیں ہوسکا: '+e.message)}
+  }
+  function getGeo(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(Error('اس ڈیوائس میں مقام کی سہولت دستیاب نہیں'));navigator.geolocation.getCurrentPosition(p=>resolve(p.coords),e=>reject(Error(e.message)),{enableHighAccuracy:true,timeout:15000})})}
+  async function getPrayerTimes(){try{const c=await getGeo();const r=await fetch(`https://api.aladhan.com/v1/timings?latitude=${c.latitude}&longitude=${c.longitude}&method=1`);const j=await r.json();if(j.code!==200)throw Error('Prayer time service unavailable');const t=j.data.timings;extra.prayer=['Fajr','Dhuhr','Asr','Maghrib','Isha'].map(k=>`${k}: ${t[k]}`).join(' · ');saveExtra();const el=root.querySelector('#extra-prayer');if(el)el.textContent=extra.prayer}catch(e){alert('نماز کے اوقات حاصل نہیں ہوئے: '+e.message)}}
+  async function getQibla(){try{const c=await getGeo();const r=await fetch(`https://api.aladhan.com/v1/qibla/${c.latitude}/${c.longitude}`);const j=await r.json();if(j.code!==200)throw Error('Qibla service unavailable');extra.qibla=`قبلہ کا زاویہ: ${Number(j.data.direction).toFixed(1)}° شمال سے گھڑی کی سمت`;saveExtra();const el=root.querySelector('#extra-qibla');if(el)el.textContent=extra.qibla}catch(e){alert('قبلہ کی سمت حاصل نہیں ہوئی: '+e.message)}}
+
   function render() {
     document.body.classList.toggle('idd-dark', !!state.dark);
 
@@ -969,7 +1004,7 @@
             ? quranPage()
             : page === 'azkar'
               ? azkarPage()
-              : diaryPage() + hijriCard();
+              : page === 'more' ? extraPage() : diaryPage() + hijriCard();
 
     root.innerHTML = `
       <div class="idd-wrap">
@@ -1180,6 +1215,12 @@
 
     const a = b.dataset.action;
 
+    if(a==='load-surah'){loadExtraSurah(false);return;}
+    if(a==='save-surah'){loadExtraSurah(true);return;}
+    if(a==='get-prayers'){getPrayerTimes();return;}
+    if(a==='get-qibla'){getQibla();return;}
+    if(a==='zakat'){const n=Number(root.querySelector('#zakat-amount')?.value||0);const el=root.querySelector('#zakat-result');if(el)el.textContent=n>0?`تخمینی زکوٰۃ: Rs. ${(n*0.025).toLocaleString('en-PK',{maximumFractionDigits:2})}`:'درست رقم درج کریں۔';return;}
+
     if (a === 'times') {
       expandedPrayerTimes = !expandedPrayerTimes;
       render();
@@ -1297,6 +1338,9 @@
 
   root.addEventListener('change', e => {
     const t = e.target;
+
+    if(t.id==='extra-lang'){extra.lang=t.value;saveExtra();alert('زبان کی ترجیح محفوظ ہوگئی۔ مکمل ترجمہ شدہ انٹرفیس اگلے مرحلے میں درکار ہے۔');}
+    else if(t.id==='extra-surah'){extra.surah=Number(t.value);saveExtra();}
 
     if (t.matches('[data-prayer]')) {
       day().prayers[t.dataset.prayer] = t.checked;
