@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for f in package.json capacitor.config.json index.html app.js build.js; do
+          for f in package.json capacitor.config.json index.html app.js build.js logic.test.js; do
             test -f "$f" || {
               echo "ERROR: Missing file: $f"
               exit 1
@@ -52,11 +52,6 @@ jobs:
           done
 
           node -e "const p=require('./package.json'); const c=require('./capacitor.config.json'); if(!c.appId || !c.appId.includes('.')) throw new Error('Invalid appId'); console.log('App ID:',c.appId,'Version:',p.version);"
-
-          test -f tests/logic.test.js || {
-            echo 'ERROR: Missing tests/logic.test.js'
-            exit 1
-          }
 
           echo 'All required project files verified.'
 
@@ -88,10 +83,8 @@ jobs:
       - name: Verify Web Build
         run: |
           set -euo pipefail
-
           test -f www/index.html
           test -f www/app.js
-
           echo 'Web build verified.'
 
       - name: Add Android Platform
@@ -136,7 +129,6 @@ jobs:
                   )
 
           p.write_text(s)
-
           print('Android SDK configuration updated.')
           PY
 
@@ -175,11 +167,8 @@ jobs:
       - name: Build Debug APK
         run: |
           cd android
-
           chmod +x gradlew
-
           ./gradlew assembleDebug --no-daemon
-
           test -f app/build/outputs/apk/debug/app-debug.apk
 
       - name: Build Release APK and AAB
@@ -205,7 +194,6 @@ jobs:
           test -n "$BT"
 
           AAB='android/app/build/outputs/bundle/release/app-release.aab'
-
           APK='android/app/build/outputs/apk/release/app-release-unsigned.apk'
 
           jarsigner \
